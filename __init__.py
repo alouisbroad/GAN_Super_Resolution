@@ -31,6 +31,13 @@ def main():
     dataset = tf.data.Dataset.from_generator(tf_data_generator, args=(file_list, batch_size),
                                              output_types=(tf.dtypes.float32, tf.dtypes.float32))
 
+    cb = []
+    for x, callback_data in dataset.take(1):
+        print(x.shape)
+        print(callback_data.shape)
+        cb.append(callback_data)
+    data = cb[0]
+
     validationset = tf.data.Dataset.from_generator(tf_data_generator, args=(file_list[300:], batch_size),
                                                    output_types=(tf.dtypes.float32, tf.dtypes.float32))
 

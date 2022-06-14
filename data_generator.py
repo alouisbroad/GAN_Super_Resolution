@@ -33,7 +33,9 @@ def tf_data_generator(file_list, batch_size=10, variable="temperature"):
         i = (i + 1) % len(file_list)
         data = iris.load_cube(os.fsdecode(file), iris.AttributeConstraint(STASH=tmp)).data
         data = tf.random.shuffle(tf.reshape(tf.convert_to_tensor(data), (*data.shape, 1)))
+        # data = tf.compat.v1.image.resize(data, (256, 256), tf.image.ResizeMethod.BICUBIC) # interpolate to 256x256
+        data = tf.image.resize_with_crop_or_pad(data, 256, 256)  # crop to 256x256
         data = normalisation(data, "zscore")
         for local_index in range(0, data.shape[0], batch_size):
             hr = data[local_index:(local_index + batch_size)]
-            yield generate_LR(hr), hr
+            yield generate_LR(hr, 4), hr

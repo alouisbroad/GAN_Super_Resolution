@@ -4,28 +4,56 @@ Supporting functions for Super Res GAN.
 from tensorflow.keras.layers import AveragePooling2D
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('agg')
 import tensorflow as tf
 import numpy as np
 
 
-def denormalisation(data, mu_var):
+def normalisation(data, ntype):
+    """
+    :param data: input data - tensor or array
+    :param ntype: Min-max normalisation or z-score (standard score) normalisation
+    :return: normalised data
+    """
+    if ntype == "minmax":
+        norm = np.array(data)
+        norm = (norm - norm.min()) / (norm.max() - norm.min())
+        return tf.convert_to_tensor(norm)
+    elif ntype == "zscore":
+        mu, variance = tf.nn.moments(data, axes=[0, 1, 2, 3])
+        return (data - mu) / tf.math.sqrt(variance)
+    else:
+        "Incorrect arguments, either minmax or zscore."
+
+
+def denormalisation(data, mu, var):
     """
     :param data: tensor of normalised data
-    :param mu_var: mu and var
+    :param mu: mu of data
+    :param var: variance of data
     :return: de-normalised data
     """
-    return data * tf.math.sqrt(mu_var[1]) + mu_var[0]
+    return data * tf.math.sqrt(mu) + var
 
 
-def upscale_image(model, dataset):
+def predict_on_data(model, dataset):
     """
-    Upscales data.
-
-    TODO: Implement denormalisation.
+    prediction with normalisation and de-normalisation steps.
     """
     # de-normalise
-    # data = denormalisation(dataset, mu_var=mu_var)
-    return model.predict(dataset)
+    mu, var = tf.nn.moments(dataset, axes=[0, 1, 2, 3])
+    data = model.predict(normalisation(dataset, "zscore"))
+    return denormalisation(data, mu=mu, var=var)
+
+
+def upscale_image(model, dataset, mu, var):
+    """
+    Predict on normalised downscaled data.
+    """
+    # de-normalise
+    data = model.predict(dataset)
+    return denormalisation(data, mu=mu, var=var)
 
 
 def plot_results(prediction, prefix, title):
@@ -99,22 +127,5 @@ def normalisation_by_channels(data, ntype):
             norm = (data - mu) / tf.math.sqrt(variance)
             result.append(norm)
         return tf.stack(result, axis=3)
-    else:
-        "Incorrect arguments, either minmax or zscore."
-
-
-def normalisation(data, ntype):
-    """
-    :param data: input data - tensor or array
-    :param ntype: Min-max normalisation or z-score (standard score) normalisation
-    :return: normalised data
-    """
-    if ntype == "minmax":
-        norm = np.array(data)
-        norm = (norm - norm.min()) / (norm.max() - norm.min())
-        return tf.convert_to_tensor(norm)
-    elif ntype == "zscore":
-        mu, variance = tf.nn.moments(data, axes=[0, 1, 2, 3])
-        return (data - mu) / tf.math.sqrt(variance)
     else:
         "Incorrect arguments, either minmax or zscore."
